@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Malaria Detection</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Malaria Detection</h1>
+      <p class="sub">Classify a blood cell image as Parasitized (infected) or Uninfected (healthy).</p>
+    </div>
+    <div id="pill" class="pill" role="status"><span class="dot"></span><span id="pillText">Checking the API...</span></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" data-tab="dash" aria-selected="true">Dashboard</button>
+    <button role="tab" data-tab="predict" aria-selected="false">Predict</button>
+    <button role="tab" data-tab="viz" aria-selected="false">Data visualizations</button>
+    <button role="tab" data-tab="data" aria-selected="false">Upload &amp; Retrain</button>
+  </nav>
+
+  <!-- ====================================================== Dashboard -->
+  <section id="tab-dash" class="panel active">
+    <h2>Model up-time</h2>
+    <div class="grid g3">
+      <div class="card metric"><div class="label">API status</div><div class="value" id="mStatus">-</div></div>
+      <div class="card metric"><div class="label">Model loaded</div><div class="value" id="mLoaded">-</div></div>
+      <div class="card metric"><div class="label">Up-time</div><div class="value" id="mUptime">-</div></div>
+    </div>
+    <p class="muted" id="startedAt">Refreshes automatically every 3 seconds.</p>
+
+    <h2>Model evaluation</h2>
+    <p>Evaluate the model that is serving predictions right now on the test images (<code>data/test</code>).</p>
+    <button class="btn primary" id="btnEval">Evaluate model on the test set</button>
+    <div id="evalMsg" class="msg" role="alert"></div>
+    <div id="evalBox"></div>
+    <div id="lastTrain"></div>
+  </section>
+
+  <!-- ====================================================== Predict -->
+  <section id="tab-predict" class="panel">
+    <h2>Predict one image</h2>
+    <label class="drop" id="dropOne" for="fileOne">Click to choose a cell image (PNG or JPG), or drop it here</label>
+    <input type="file" id="fileOne" accept="image/png,image/jpeg">
+    <div id="predictArea" style="display:none; margin-top:16px">
+      <div class="predict-grid">
+        <div><img id="preview" class="preview" alt="Selected cell image"><p class="muted" id="fileName"></p></div>
+        <div>
+          <button class="btn primary" id="btnPredict">Predict</button>
+          <div id="predMsg" class="msg" role="alert"></div>
+          <div id="predResult" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================== Visualizations -->
+  <section id="tab-viz" class="panel">
+    <h2>What does the data look like?</h2>
+    <div id="vizMsg" class="msg" role="alert"></div>
+
+    <div class="card">
+      <h3>Class balance</h3>
+      <div class="viz-row">
+        <div><div class="chart-box"><canvas id="chClasses" role="img" aria-label="Number of images per class in train, test and pending uploads"></canvas></div></div>
+        <div>
+          <p id="balanceText"></p>
+          <p class="muted">When both classes have about the same number of images, accuracy is a fair metric. A big gap would push the model to favour the larger class.</p>
+        </div>
+      </div>
+    </div>
+
+    <h2>Examples</h2>
+    <div class="card"><div id="samples" class="samples"></div></div>
+
+    <div class="row" style="margin-top:24px">
+      <label for="nPer" class="muted">Images per class used for the charts:</label>
+      <select id="nPer"><option>100</option><option selected>200</option><option>400</option><option>800</option></select>
+    </div>
+
+    <div id="featureCards"></div>
+  </section>
+
+  <!-- ====================================================== Upload & Retrain -->
+  <section id="tab-data" class="panel">
+    <h2>1. Upload new images</h2>
+    <label class="field" for="label">Class of these images</label>
+    <select id="label"><option>Parasitized</option><option>Uninfected</option></select>
+    <label class="drop" id="dropMany" for="fileMany" style="margin-top:12px">Click to choose many images, or drop them here</label>
+    <input type="file" id="fileMany" accept="image/png,image/jpeg" multiple>
+    <p class="muted" id="manyInfo">No file selected.</p>
+    <button class="btn primary" id="btnUpload" disabled>Upload to the API</button>
+    <progress id="upProgress" value="0" max="1" style="display:none; margin-top:12px"></progress>
+    <div id="upMsg" class="msg" role="alert"></div>
+
+    <h2>2. Retraining trigger</h2>
+    <div class="grid g3">
+      <div class="card metric"><div class="label">Images waiting for retraining</div><div class="value" id="mPending">-</div></div>
+      <div class="card metric"><div class="label">Trigger threshold</div><div class="value" id="mThreshold">-</div></div>
+    </div>
+    <div id="triggerMsg" class="msg"></div>
+
+    <h2>3. Train / retrain</h2>
+    <button class="btn primary" id="btnRetrain" disabled>Retrain with the uploaded images</button>
+    <div id="retrainMsg" class="msg" role="alert"></div>
+    <details>
+      <summary>Advanced: train a new model from scratch</summary>
+      <p>Builds a new model and trains it on all the images in <code>data/train</code>. It replaces the current model (a backup is kept).</p>
+      <label><input type="checkbox" id="sure"> I understand that the current model will be replaced</label><br><br>
+      <button class="btn" id="btnTrain" disabled>Train from scratch</button>
+    </details>
+    <div id="trainBox" style="margin-top:16px" aria-live="polite"></div>
+  </section>
+</div>
+
+<script src="/static/chart.umd.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

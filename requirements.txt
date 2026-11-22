@@ -5,6 +5,4 @@ python-multipart
 pillow
 scikit-learn
 numpy
-requests
-streamlit
 locust
