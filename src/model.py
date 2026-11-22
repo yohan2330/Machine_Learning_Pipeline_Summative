@@ -5,13 +5,13 @@ import shutil
 import time
 
 import numpy as np
-import tensorflow as tf
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
+                             precision_score, recall_score)
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from src.preprocessing import (CLASSES, IMG_SIZE, MODEL_INFO_PATH, MODEL_PATH,
-                               TEST_DIR, TRAIN_DIR, UPLOAD_DIR, ALLOWED_EXTENSIONS,
+from src.preprocessing import (ALLOWED_EXTENSIONS, CLASSES, IMG_SIZE, MODEL_INFO_PATH,
+                               MODEL_PATH, TEST_DIR, TRAIN_DIR, UPLOAD_DIR,
                                dataset_counts, ensure_folders)
 
 BATCH_SIZE = 32
@@ -44,18 +44,10 @@ def make_dataset(directory, shuffle=True):
         class_names=CLASSES, shuffle=shuffle, seed=SEED)
 
 
-def train_from_scratch(epochs=5):
-    """First training (the notebook does the same). Saves the model in models/."""
-    ensure_folders()
-    ds = make_dataset(TRAIN_DIR)
-    model = build_model()
-    model.fit(ds, epochs=epochs)
-    model.save(MODEL_PATH)
-    return model
-
-
 def evaluate_model(model) -> dict:
-    """Evaluate on data/test and return all the metrics."""
+    """Evaluate on data/test and return all the metrics (empty dict if no test images)."""
+    if sum(dataset_counts(TEST_DIR).values()) == 0:
+        return {}
     test_ds = make_dataset(TEST_DIR, shuffle=False)
     y_true = np.concatenate([y.numpy() for _, y in test_ds]).ravel().astype(int)
     y_pred = (model.predict(test_ds, verbose=0).ravel() >= 0.5).astype(int)
@@ -64,16 +56,56 @@ def evaluate_model(model) -> dict:
         "precision": round(float(precision_score(y_true, y_pred, zero_division=0)), 4),
         "recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 4),
         "f1": round(float(f1_score(y_true, y_pred, zero_division=0)), 4),
+        # rows = actual, columns = predicted, order = CLASSES (Parasitized, Uninfected)
+        "confusion_matrix": confusion_matrix(y_true, y_pred, labels=[0, 1]).tolist(),
         "test_images": int(len(y_true)),
     }
 
 
 def load_model_info() -> dict:
-    """Information saved after the last (re)training."""
+    """Information saved after the last training / retraining / evaluation."""
     if os.path.exists(MODEL_INFO_PATH):
         with open(MODEL_INFO_PATH) as f:
             return json.load(f)
     return {}
+
+
+def save_model_info(info: dict):
+    with open(MODEL_INFO_PATH, "w") as f:
+        json.dump(info, f, indent=2)
+
+
+def _backup_and_save(model):
+    """Keep the previous model as a backup, then save the new one."""
+    if os.path.exists(MODEL_PATH):
+        shutil.copy(MODEL_PATH, MODEL_PATH.replace(".h5", "_previous.h5"))
+    model.save(MODEL_PATH)
+
+
+def train_from_scratch(epochs=5) -> dict:
+    """Train a NEW model on data/train (same as the notebook), evaluate it and save it."""
+    ensure_folders()
+    if sum(dataset_counts(TRAIN_DIR).values()) == 0:
+        raise ValueError("No training images found in data/train.")
+
+    start = time.time()
+    model = build_model()
+    history = model.fit(make_dataset(TRAIN_DIR), epochs=epochs, verbose=2)
+    metrics = evaluate_model(model)
+    _backup_and_save(model)
+
+    info = {
+        "mode": "train from scratch",
+        "last_trained": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "training_images": sum(dataset_counts(TRAIN_DIR).values()),
+        "new_images_used": 0,
+        "epochs": epochs,
+        "training_seconds": round(time.time() - start, 1),
+        "final_train_accuracy": round(float(history.history["accuracy"][-1]), 4),
+        "test_metrics": metrics,
+    }
+    save_model_info(info)
+    return info
 
 
 def _move_uploads_to_train():
@@ -97,8 +129,7 @@ def retrain(epochs=3) -> dict:
     -> back up the old model -> save the new one -> move new images to data/train.
     """
     ensure_folders()
-    new_counts = dataset_counts(UPLOAD_DIR)
-    n_new = sum(new_counts.values())
+    n_new = sum(dataset_counts(UPLOAD_DIR).values())
     if n_new == 0:
         raise ValueError("No uploaded images to retrain with. Upload data first.")
 
@@ -109,25 +140,21 @@ def retrain(epochs=3) -> dict:
 
     old_ds = make_dataset(TRAIN_DIR)
     new_ds = make_dataset(UPLOAD_DIR).repeat(NEW_DATA_REPEAT)
-    train_ds = old_ds.concatenate(new_ds)
-    history = model.fit(train_ds, epochs=epochs, verbose=2)
+    history = model.fit(old_ds.concatenate(new_ds), epochs=epochs, verbose=2)
 
     metrics = evaluate_model(model)
-
-    # Keep the previous model as a backup, then save the new one
-    if os.path.exists(MODEL_PATH):
-        shutil.copy(MODEL_PATH, MODEL_PATH.replace(".h5", "_previous.h5"))
-    model.save(MODEL_PATH)
+    _backup_and_save(model)
     moved = _move_uploads_to_train()
 
     info = {
+        "mode": "retrain",
         "last_trained": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "training_images": sum(dataset_counts(TRAIN_DIR).values()),
         "new_images_used": moved,
         "epochs": epochs,
         "training_seconds": round(time.time() - start, 1),
         "final_train_accuracy": round(float(history.history["accuracy"][-1]), 4),
         "test_metrics": metrics,
     }
-    with open(MODEL_INFO_PATH, "w") as f:
-        json.dump(info, f, indent=2)
+    save_model_info(info)
     return info

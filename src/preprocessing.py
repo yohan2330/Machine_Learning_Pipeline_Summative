@@ -6,6 +6,7 @@ inside the model itself (Rescaling layer), so we keep raw 0-255 values here.
 """
 import io
 import os
+import random
 
 import numpy as np
 from PIL import Image
@@ -59,3 +60,34 @@ def count_images(folder: str) -> int:
 def dataset_counts(base_dir: str) -> dict:
     """Number of images per class for data/train, data/test or data/uploads."""
     return {c: count_images(os.path.join(base_dir, c)) for c in CLASSES}
+
+
+def list_images(folder: str) -> list:
+    """Sorted image file names of a folder."""
+    if not os.path.isdir(folder):
+        return []
+    return sorted(f for f in os.listdir(folder)
+                  if os.path.splitext(f)[1].lower() in ALLOWED_EXTENSIONS)
+
+
+def extract_features(n_per_class: int = 200, seed: int = 42) -> list:
+    """3 simple features per image, used for the visualizations:
+    average green value, contrast (std of gray levels) and image size (pixels)."""
+    rng = random.Random(seed)
+    rows = []
+    for c in CLASSES:
+        folder = os.path.join(TRAIN_DIR, c)
+        files = list_images(folder)
+        rng.shuffle(files)
+        for f in files[:n_per_class]:
+            try:
+                img = Image.open(os.path.join(folder, f)).convert("RGB")
+            except Exception:
+                continue
+            w, h = img.size
+            arr = np.asarray(img.resize((64, 64)), dtype="float32")
+            rows.append({"class": c,
+                         "mean_green": round(float(arr[:, :, 1].mean()), 2),
+                         "contrast": round(float(arr.mean(axis=2).std()), 2),
+                         "area_px": w * h})
+    return rows

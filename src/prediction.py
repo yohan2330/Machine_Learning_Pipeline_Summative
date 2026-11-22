@@ -25,6 +25,12 @@ def is_model_loaded() -> bool:
     return _model is not None
 
 
+def get_model():
+    """The model currently in memory (or None)."""
+    with _lock:
+        return _model
+
+
 def predict_bytes(data: bytes) -> dict:
     """Predict one image (given as bytes). Returns the label and the confidence."""
     with _lock:
