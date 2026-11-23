@@ -2,7 +2,11 @@ FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
     TF_CPP_MIN_LOG_LEVEL=2 \
-    PORT=8000
+    PORT=8000 \
+    OMP_NUM_THREADS=1 \
+    TF_NUM_INTRAOP_THREADS=1 \
+    TF_NUM_INTEROP_THREADS=1 \
+    MALLOC_ARENA_MAX=2
 
 # Run as a normal user (required by some cloud platforms, e.g. Hugging Face Spaces)
 RUN useradd -m -u 1000 appuser

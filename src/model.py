@@ -12,7 +12,8 @@ from tensorflow.keras import layers
 
 from src.preprocessing import (ALLOWED_EXTENSIONS, CLASSES, IMG_SIZE, MODEL_INFO_PATH,
                                MODEL_PATH, TEST_DIR, TRAIN_DIR, UPLOAD_DIR,
-                               dataset_counts, ensure_folders)
+                               dataset_counts, ensure_folders, list_images,
+                               load_image_from_bytes)
 
 BATCH_SIZE = 32
 SEED = 42
@@ -45,12 +46,31 @@ def make_dataset(directory, shuffle=True):
 
 
 def evaluate_model(model) -> dict:
-    """Evaluate on data/test and return all the metrics (empty dict if no test images)."""
+    """Evaluate on data/test and return all the metrics (empty dict if no test images).
+
+    Images are read and predicted in small groups (low memory: works on small cloud servers)."""
     if sum(dataset_counts(TEST_DIR).values()) == 0:
         return {}
-    test_ds = make_dataset(TEST_DIR, shuffle=False)
-    y_true = np.concatenate([y.numpy() for _, y in test_ds]).ravel().astype(int)
-    y_pred = (model.predict(test_ds, verbose=0).ravel() >= 0.5).astype(int)
+    files = []                       # (path, label)
+    for label, cls in enumerate(CLASSES):
+        folder = os.path.join(TEST_DIR, cls)
+        for name in list_images(folder):
+            files.append((os.path.join(folder, name), label))
+
+    y_true, y_pred = [], []
+    group = 8
+    for i in range(0, len(files), group):
+        chunk = files[i:i + group]
+        batch = []
+        for path, _ in chunk:
+            with open(path, "rb") as f:
+                batch.append(load_image_from_bytes(f.read())[0])
+        probs = model(np.stack(batch), training=False).numpy().ravel()
+        y_pred.extend((probs >= 0.5).astype(int).tolist())
+        y_true.extend(label for _, label in chunk)
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
     return {
         "accuracy": round(float(accuracy_score(y_true, y_pred)), 4),
         "precision": round(float(precision_score(y_true, y_pred, zero_division=0)), 4),
