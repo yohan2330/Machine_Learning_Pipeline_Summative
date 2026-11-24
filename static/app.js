@@ -1,12 +1,7 @@
-
-// =====================================================================================
-// INTERPRETATIONS
-// =====================================================================================
-
 const INTERPRETATIONS = {
-  mean_green: "Write your interpretation here. Compare the two curves: the further apart they are, the more this feature helps to tell infected from healthy cells.",
-  contrast: "Write your interpretation here. Contrast is how much the pixel values vary inside one image. What does a higher or lower contrast say about a stained parasite?",
-  area_px: "Write your interpretation here. If image size differs between classes, the model could learn the size instead of the parasite. Is that a risk here?"
+  mean_green: "Infected cells are darker: the median green value is 105.2 for parasitized cells against 113.2 for healthy cells (about 7% lower). The stain of the parasite absorbs light and darkens the cell, and infected cells also have a wider spread, with some very dark ones. The two curves still overlap a lot, so brightness alone cannot separate the classes, but it is a useful clue for the model.",
+  contrast:   "The contrast is almost the same in both classes (72.7 against 73.4, less than 1% difference) and the two curves are nearly on top of each other. This tells us that the parasite is a small local spot: it does not change how much the pixel values vary in the whole image. So contrast is not a good feature to detect malaria, and the model needs to look at the shapes inside the cell.",
+  area_px:    "Image size is similar in both classes (17,632 px for parasitized against 16,896 px for healthy, about 4% difference). Size is only a technical detail of how the cells were cropped, not a sign of disease. The small gap means the risk is low, but we resize all images to 128x128 so that the model learns the cell and the parasite, not the size of the picture."
 };
 
 const FEATURES = [
