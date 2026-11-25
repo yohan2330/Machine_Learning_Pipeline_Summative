@@ -23,7 +23,7 @@ The project covers data processing, model training, prediction, retraining with 
 
 | Accuracy | Precision | Recall | F1 | AUC |
 |---|---|---|---|---|
-| 0.929 | 0.924 | 0.935 | 0.929 | 0.978 |
+| 0.901 | 0.874 | 0.937 | 0.904 | 0.967 |
 
 ## Project structure
 
