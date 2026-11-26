@@ -5,13 +5,11 @@ The project covers data processing, model training, prediction, retraining with 
 
 ## Links
 
-- **Video demo (YouTube):** _paste the link here_
+- **Video demo (YouTube):** https://youtu.be/Divgmq438jo?si=MWdh5FRJG0zgUfN
 - **Deployed app:** https://machine-learning-pipeline-summative-1.onrender.com
 - **API docs:** https://machine-learning-pipeline-summative-1.onrender.com/docs
 - **GitHub:** https://github.com/yohan2330/Machine_Learning_Pipeline_Summative
 
-> The free Render plan sleeps after 15 minutes without traffic (the first request can take about one minute) and has limited memory.
-> Images uploaded and models retrained online are lost when the service restarts. The full demo is in the video.
 
 ## Description
 
